@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>韓國釜山2026年12月住宿分析與系統設計架構 (AGENT)</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f4f6f9; }
+  .card { background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px; }
+  h1 { color: #1a365d; border-bottom: 3px solid #3182ce; padding-bottom: 12px; }
+  h2 { color: #2b6cb0; margin-top: 25px; border-left: 4px solid #3182ce; padding-left: 10px; }
+  h3 { color: #2d3748; }
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; background: #fff; }
+  th, td { border: 1px solid #e2e8f0; padding: 10px 14px; text-align: left; font-size: 14px; }
+  th { background: #2b6cb0; color: #fff; }
+  tr:nth-child(even) { background: #f7fafc; }
+  .tag { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+  .tag-blue { background: #ebf8ff; color: #2b6cb0; }
+  .tag-green { background: #f0fff4; color: #276749; }
+  .tag-red { background: #fff5f5; color: #c53030; }
+  pre { background: #1a202c; color: #edf2f7; padding: 15px; border-radius: 6px; overflow-x: auto; }
+  code { font-family: Consolas, Monaco, monospace; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>韓國釜山2026年12月住宿分析與系統設計架構 (AGENT)</h1>
+  <p>本文件記錄針對 <strong>2026年12月韓國釜山旅遊 (5天5夜)</strong> 之飯店大數據解析、比價系統工程設計與整合流程。</p>
+  
+  <h2>1. 專案需求指標 (Project Parameters)</h2>
+  <table>
+    <tr><th>項目</th><th>設定值</th><th>說明</th></tr>
+    <tr><td>國家 / 城市</td><td>韓國 (Korea) / 釜山 (Busan)</td><td>重點觀光都會區</td></tr>
+    <tr><td>入住日期</td><td>2026/12/3 ～ 2026/12/8</td><td>5 晚 (5 nights), 2 成人</td></tr>
+    <tr><td>房型種類</td><td>Hotel (飯店)</td><td>獨立衛浴與優質服務</td></tr>
+    <tr><td>每晚預算</td><td>NT$ 0 ～ 5,000</td><td>5晚總額 NT$ 25,000 以內</td></tr>
+    <tr><td>星級評等</td><td>3星級或以上 (3+ Stars)</td><td>具備一定服務標準</td></tr>
+    <tr><td>客戶評價</td><td>8.0+ 優秀 (Excellent)</td><td>大眾真實住宿口碑過濾</td></tr>
+    <tr><td>位置評價</td><td>8.0+ 優秀 (Excellent)</td><td>鄰近地鐵、海灘或核心鬧區</td></tr>
+  </table>
+
+  <h2>2. 系統架構與資料整合管線 (Architecture & Data Pipeline)</h2>
+  <pre>
++-------------------------------------------------------------------------+
+|                        Hotels 資料夾原始 PDF 報表                        |
+|   1. Agoda (18頁, 98筆)   2. Booking (14頁, 75筆)   3. Trip (24頁, 138筆) |
++-------------------------------------------------------------------------+
+                                    │
+                                    ▼
++-------------------------------------------------------------------------+
+|                  PDFplumber & Pypdf 混合逆向結構解析器                    |
+|  - 向量圖形星級判定 (Bounding Box Curve Clustering)                      |
+|  - 2D 卡片坐標文字對齊 (Text Layout Disambiguation)                       |
+|  - 價格單位標準化 (每晚 vs 總額, 稅費拆解)                                |
++-------------------------------------------------------------------------+
+                                    │
+                                    ▼
++-------------------------------------------------------------------------+
+|               外部社群權威數據融合 (External Grounding)                  |
+|  - Tripadvisor.com 國際旅人綜合指標與排行榜評級                           |
+|  - Google Maps 4.0+ 地圖實名地標評論與星等                               |
++-------------------------------------------------------------------------+
+                                    │
+                                    ▼
++-------------------------------------------------------------------------+
+|                     跨平台實體對齊 (Entity Resolution)                  |
+|  - 模糊相似度字串關聯 (Fuzzy Name Matching)                              |
+|  - 彙整產出 6 大 Tab Excel 專業試算表與多格式文檔                         |
++-------------------------------------------------------------------------+
+  </pre>
+
+  <h2>3. 多平台數據規格特點對照</h2>
+  <table>
+    <tr><th>平台名稱</th><th>星級來源</th><th>價格計算方式</th><th>評價與評分呈現</th><th>位置描述特色</th></tr>
+    <tr><td><span class="tag tag-red">Agoda.com</span></td><td>飯店旁星級文字與圖示</td><td>每晚新台幣 (per night NT$)</td><td>0-10 分制，附精確 reviews 數</td><td>附 0-10 獨立 Location score</td></tr>
+    <tr><td><span class="tag tag-blue">Booking.com</span></td><td>SVG 幾何曲線星級 (Curves)</td><td>5晚總計新台幣 (in total NT$)</td><td>0-10 分制，附 reviews 數</td><td>附 Location 評分與地鐵海灘距離</td></tr>
+    <tr><td><span class="tag tag-blue">Trip.com</span></td><td>Unicode 專屬符號字元</td><td>每晚單價 + 5晚總額 (TWD)</td><td>0-10 分制，附 reviews 數</td><td>標示鄰近商圈、地鐵站與景點</td></tr>
+    <tr><td><span class="tag tag-green">Tripadvisor</span></td><td>國際酒店官方評星</td><td>跨訂房網即時整合報價</td><td>5.0 滿分圓圈評分</td><td>世界各地旅人實名回饋與位置評比</td></tr>
+    <tr><td><span class="tag tag-green">Google Map</span></td><td>在地商家正式登記星級</td><td>即時地圖導流定價</td><td>5.0 滿分在地嚮導評價</td><td>即時交通路線、街景與生活機能評等</td></tr>
+  </table>
+</div>
+</body>
+</html>

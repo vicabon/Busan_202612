@@ -1,0 +1,7 @@
+*.log
+*raw.txt
+test_*.py
+find_*.py
+excel_data.json
+.system_generated/
+__pycache__/

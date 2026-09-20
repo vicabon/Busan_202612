@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>專案技能清單與技術庫 (SKILL)</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f4f6f9; }
+  .card { background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px; }
+  h1 { color: #234e52; border-bottom: 3px solid #319795; padding-bottom: 12px; }
+  h2 { color: #285e61; margin-top: 25px; border-left: 4px solid #319795; padding-left: 10px; }
+  .skill-box { border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px 20px; margin-bottom: 15px; background: #fafafa; }
+  .skill-title { font-size: 16px; font-weight: bold; color: #2c7a7b; margin-bottom: 6px; }
+  ul { margin: 5px 0; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>專案技能清單與技術庫 (SKILL)</h1>
+  <p>本文件記錄本專案所採用之資料工程、PDF逆向解析、多源異質整合與自動化報表建置之技術模組。</p>
+  
+  <h2>1. 模組化技能架構</h2>
+  
+  <div class="skill-box">
+    <div class="skill-title">SKILL 1: PDF 幾何坐標與向量路徑逆向解析 (PDF Geometry & Curve Extraction)</div>
+    <ul>
+      <li>工具：<code>pdfplumber</code>, <code>pypdf</code></li>
+      <li>重點：掃描 PDF 底層 <code>curves</code> 幾何路徑，識別星級圖形大小與相對卡片位置，化解非文字星級難題。</li>
+      <li>應用：精確判斷 Booking.com 飯店的 3星、4星、5星等級。</li>
+    </ul>
+  </div>
+
+  <div class="skill-box">
+    <div class="skill-title">SKILL 2: 多源網頁版面資訊抽取 (Web-to-PDF Text Stream Parsing)</div>
+    <ul>
+      <li>工具：Python 正則表達式、流式字串過濾器</li>
+      <li>重點：解決瀏覽器列印為 PDF 時造成的雙欄交錯問題，重建各卡片之評分、評價數與價格關聯。</li>
+      <li>應用：Agoda 1/10 標籤對齊、Trip.com Check Availability 斷點連續處理。</li>
+    </ul>
+  </div>
+
+  <div class="skill-box">
+    <div class="skill-title">SKILL 3: 實體解析與跨網站對齊 (Entity Resolution & Fuzzy Matching)</div>
+    <ul>
+      <li>工具：Jaccard Token 相似度、核心地標關鍵字配對</li>
+      <li>重點：跨 Agoda、Booking、Trip.com、Tripadvisor 與 Google Maps 統一同一飯店名稱。</li>
+      <li>應用：彙整產出「綜合總結比價 (Summary)」大表。</li>
+    </ul>
+  </div>
+
+  <div class="skill-box">
+    <div class="skill-title">SKILL 4: 商業化高階 Excel 試算表工程 (Spreadsheet Automation)</div>
+    <ul>
+      <li>工具：<code>openpyxl</code></li>
+      <li>重點：建構 6 個獨立 Tab，賦予各平台品牌配色、自適應欄寬、凍結表頭與自定義邊框樣式。</li>
+      <li>應用：產出 <code>韓國釜山2026年12月住宿評比與比價總表.xlsx</code>。</li>
+    </ul>
+  </div>
+
+  <div class="skill-box">
+    <div class="skill-title">SKILL 5: 聲譽情報檢索與資料驗證 (Reputation Grounding & Enrichment)</div>
+    <ul>
+      <li>工具：Web Search, TripAdvisor & Google Map 地圖資料</li>
+      <li>重點：補足 TripAdvisor 國際排名與 Google 地圖數千則旅人實體評分。</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>
