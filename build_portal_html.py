@@ -65,7 +65,7 @@ html_content = f"""<!DOCTYPE html>
     header {{
       background: linear-gradient(135deg, #091325 0%, #1e3a8a 60%, #881337 100%);
       color: white;
-      padding: 30px 20px 24px;
+      padding: 28px 20px 22px;
       text-align: center;
       box-shadow: 0 4px 20px rgba(0,0,0,0.12);
     }}
@@ -111,7 +111,7 @@ html_content = f"""<!DOCTYPE html>
     }}
 
     .container {{
-      max-width: 1400px;
+      max-width: 1440px;
       margin: 20px auto;
       padding: 0 16px;
     }}
@@ -194,39 +194,86 @@ html_content = f"""<!DOCTYPE html>
       margin-left: auto;
     }}
 
-    /* Desktop Table */
+    /* Frozen Table Container with Fixed Viewport Height */
     .table-container {{
       background: var(--card-bg);
       border-radius: 10px;
       border: 1px solid var(--border);
       overflow-x: auto;
+      overflow-y: auto;
+      max-height: 75vh; /* 凍結表格高度，往下滑動表頭固定於最上方 */
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
       display: block;
+      position: relative;
+    }}
+    .table-container::-webkit-scrollbar {{
+      width: 8px;
+      height: 8px;
+    }}
+    .table-container::-webkit-scrollbar-thumb {{
+      background: #cbd5e1;
+      border-radius: 4px;
     }}
     table {{
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       text-align: left;
       font-size: 0.88rem;
     }}
     th {{
       background: #f1f5f9;
-      color: #334155;
+      color: #1e293b;
       font-weight: 700;
       padding: 12px 14px;
-      border-bottom: 2px solid var(--border);
+      border-bottom: 2px solid #cbd5e1;
+      border-right: 1px solid #e2e8f0;
       white-space: nowrap;
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 20;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }}
+    th:hover {{
+      background: #e2e8f0;
+      color: #0f172a;
+    }}
+    th.sorted-asc, th.sorted-desc {{
+      background: #e0e7ff;
+      color: #1e3a8a;
+      border-bottom-color: #3b82f6;
+    }}
+    .sort-icon {{
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 0.85rem;
+      opacity: 0.5;
+    }}
+    th.sorted-asc .sort-icon, th.sorted-desc .sort-icon {{
+      opacity: 1;
+      color: #1d4ed8;
+      font-weight: 900;
+    }}
+
     th.food-th {{
       background: #fef2f2;
       color: #991b1b;
     }}
+    th.food-th:hover {{
+      background: #fee2e2;
+    }}
+    th.food-th.sorted-asc, th.food-th.sorted-desc {{
+      background: #ffe4e6;
+      color: #9f1239;
+    }}
+
     td {{
-      padding: 12px 14px;
+      padding: 11px 14px;
       border-bottom: 1px solid var(--border);
+      border-right: 1px solid #f1f5f9;
       vertical-align: middle;
     }}
     tr:hover td {{ background-color: #f8fafc; }}
@@ -403,10 +450,10 @@ html_content = f"""<!DOCTYPE html>
         <table>
           <thead>
             <tr>
-              <th class="food-th" style="width: 50px; text-align: center;">No.</th>
-              <th class="food-th">店名 (英文 / 韓文)</th>
-              <th class="food-th">Blue Ribbon 評級</th>
-              <th class="food-th">料理種類</th>
+              <th class="food-th" style="width: 50px; text-align: center;" onclick="sortFood('no')">No. <span class="sort-icon" id="food_sort_no">⇅</span></th>
+              <th class="food-th" onclick="sortFood('title_en')">店名 (英文 / 韓文) <span class="sort-icon" id="food_sort_title_en">⇅</span></th>
+              <th class="food-th" onclick="sortFood('ribbon_count')">Blue Ribbon 評級 <span class="sort-icon" id="food_sort_ribbon_count">⇅</span></th>
+              <th class="food-th" onclick="sortFood('cuisine_en')">料理種類 <span class="sort-icon" id="food_sort_cuisine_en">⇅</span></th>
               <th class="food-th">地址 (可複製導航)</th>
               <th class="food-th">營業時間與主題</th>
             </tr>
@@ -427,6 +474,13 @@ html_content = f"""<!DOCTYPE html>
     let currentMainSection = "hotel";
     let currentHotelSheet = "綜合總結比價 (Summary)";
     let currentFoodRibbonFilter = "ALL";
+
+    // Sorting states
+    let hotelSortCol = null;
+    let hotelSortDir = "asc"; // 'asc' or 'desc'
+
+    let foodSortCol = null;
+    let foodSortDir = "asc";
 
     const hotelTabs = [
       {{ name: "綜合總結比價 (Summary)", label: "綜合比價與加權總評", icon: "⭐" }},
@@ -459,7 +513,7 @@ html_content = f"""<!DOCTYPE html>
       }}
     }}
 
-    // Hotel logic
+    // Hotel subtabs
     function initHotelSubtabs() {{
       const c = document.getElementById("hotelSubtabs");
       c.innerHTML = "";
@@ -469,6 +523,7 @@ html_content = f"""<!DOCTYPE html>
         btn.innerHTML = `${{t.icon}} ${{t.label}}`;
         btn.onclick = () => {{
           currentHotelSheet = t.name;
+          hotelSortCol = null; // reset sort when switching sheet
           initHotelSubtabs();
           document.getElementById("hotelSearchInput").value = "";
           renderHotelSheet();
@@ -477,21 +532,86 @@ html_content = f"""<!DOCTYPE html>
       }});
     }}
 
+    // Sorting Helper for Hotels
+    function sortHotel(headerName) {{
+      if (hotelSortCol === headerName) {{
+        hotelSortDir = hotelSortDir === "asc" ? "desc" : "asc";
+      }} else {{
+        hotelSortCol = headerName;
+        // Default descending for ratings and reviews, ascending for name
+        if (headerName.includes("評比") || headerName.includes("星級") || headerName.includes("價格")) {{
+          hotelSortDir = "desc";
+        }} else {{
+          hotelSortDir = "asc";
+        }}
+      }}
+      renderHotelSheet();
+    }}
+
+    function extractNumericValue(valStr, headerName) {{
+      if (!valStr || valStr === "N/A" || valStr === "-") return -999999;
+      const str = String(valStr).trim();
+      
+      // Star rating: '4星級' -> 4
+      if (headerName.includes("星級")) {{
+        const m = str.match(/(\\d+)/);
+        return m ? parseFloat(m[1]) : 0;
+      }}
+      
+      // Weighted average / Rating: '9.16 / 10' -> 9.16
+      if (headerName.includes("評比") || headerName.includes("Rating") || headerName.includes("Score")) {{
+        const m = str.match(/(\\d+(?:\\.\\d+)?)/);
+        return m ? parseFloat(m[1]) : 0;
+      }}
+
+      // Price: 'NT$ 4,718' -> 4718
+      if (headerName.includes("價格") || headerName.includes("Price")) {{
+        const clean = str.replace(/[^0-9]/g, '');
+        return clean ? parseFloat(clean) : 0;
+      }}
+
+      // Fallback
+      return str;
+    }}
+
     function renderHotelSheet() {{
       const sheet = HOTEL_EXCEL_DATA[currentHotelSheet];
       if (!sheet) return;
 
       const q = document.getElementById("hotelSearchInput").value.toLowerCase().trim();
-      const filtered = sheet.rows.filter(row => {{
+      let filtered = sheet.rows.filter(row => {{
         if (!q) return true;
         return Object.values(row).some(v => String(v).toLowerCase().includes(q));
       }});
 
-      document.getElementById("hotelStatsBadge").textContent = `顯示 ${{filtered.length}} / ${{sheet.rows.length}} 筆飯店`;
+      // Apply Sorting
+      if (hotelSortCol) {{
+        filtered.sort((a, b) => {{
+          const valA = extractNumericValue(a[hotelSortCol], hotelSortCol);
+          const valB = extractNumericValue(b[hotelSortCol], hotelSortCol);
+
+          if (typeof valA === "number" && typeof valB === "number") {{
+            return hotelSortDir === "asc" ? valA - valB : valB - valA;
+          }} else {{
+            const sA = String(a[hotelSortCol] || "");
+            const sB = String(b[hotelSortCol] || "");
+            return hotelSortDir === "asc" ? sA.localeCompare(sB, "zh-Hant") : sB.localeCompare(sA, "zh-Hant");
+          }}
+        }});
+      }}
+
+      document.getElementById("hotelStatsBadge").textContent = `顯示 ${{filtered.length}} / ${{sheet.rows.length}} 筆飯店 (可點擊欄位排序)`;
 
       const thead = document.getElementById("hotelTableHead");
       const tbody = document.getElementById("hotelTableBody");
-      thead.innerHTML = "<tr>" + sheet.headers.map(h => `<th>${{h}}</th>`).join("") + "</tr>";
+      
+      // Build Headers with Click-to-Sort & Indicator
+      thead.innerHTML = "<tr>" + sheet.headers.map(h => {{
+        const isSorted = hotelSortCol === h;
+        const icon = isSorted ? (hotelSortDir === "asc" ? "▲" : "▼") : "⇅";
+        const cls = isSorted ? (hotelSortDir === "asc" ? "sorted-asc" : "sorted-desc") : "";
+        return `<th class="${{cls}}" onclick="sortHotel('${{h}}')">${{h}} <span class="sort-icon">${{icon}}</span></th>`;
+      }}).join("") + "</tr>";
       
       tbody.innerHTML = filtered.map(row => {{
         return "<tr>" + sheet.headers.map(h => {{
@@ -509,7 +629,7 @@ html_content = f"""<!DOCTYPE html>
         }}).join("") + "</tr>";
       }}).join("");
 
-      // Mobile
+      // Mobile Cards
       const cards = document.getElementById("hotelCardsContainer");
       cards.innerHTML = filtered.map(row => {{
         const name = row["飯店名稱 (Hotel Name)"] || row["飯店名稱"] || "飯店";
@@ -552,9 +672,19 @@ html_content = f"""<!DOCTYPE html>
       renderFoodList();
     }}
 
+    function sortFood(colName) {{
+      if (foodSortCol === colName) {{
+        foodSortDir = foodSortDir === "asc" ? "desc" : "asc";
+      }} else {{
+        foodSortCol = colName;
+        foodSortDir = colName === "ribbon_count" ? "desc" : "asc";
+      }}
+      renderFoodList();
+    }}
+
     function renderFoodList() {{
       const q = document.getElementById("foodSearchInput").value.toLowerCase().trim();
-      const filtered = FOOD_DATA.filter(item => {{
+      let filtered = FOOD_DATA.filter(item => {{
         if (currentFoodRibbonFilter !== "ALL") {{
           if (String(item.ribbon_count) !== currentFoodRibbonFilter) return false;
         }}
@@ -569,7 +699,36 @@ html_content = f"""<!DOCTYPE html>
         );
       }});
 
-      document.getElementById("foodStatsBadge").textContent = `顯示 ${{filtered.length}} / ${{FOOD_DATA.length}} 家餐廳`;
+      // Apply Food Sorting
+      if (foodSortCol) {{
+        filtered.sort((a, b) => {{
+          const vA = a[foodSortCol];
+          const vB = b[foodSortCol];
+          if (typeof vA === "number" && typeof vB === "number") {{
+            return foodSortDir === "asc" ? vA - vB : vB - vA;
+          }} else {{
+            const sA = String(vA || "");
+            const sB = String(vB || "");
+            return foodSortDir === "asc" ? sA.localeCompare(sB, "zh-Hant") : sB.localeCompare(sA, "zh-Hant");
+          }}
+        }});
+      }}
+
+      // Update sort icons for Food
+      ["no", "title_en", "ribbon_count", "cuisine_en"].forEach(col => {{
+        const iconEl = document.getElementById(`food_sort_${{col}}`);
+        if (iconEl) {{
+          if (foodSortCol === col) {{
+            iconEl.textContent = foodSortDir === "asc" ? "▲" : "▼";
+            iconEl.parentElement.className = `food-th ${{foodSortDir === "asc" ? "sorted-asc" : "sorted-desc"}}`;
+          }} else {{
+            iconEl.textContent = "⇅";
+            iconEl.parentElement.className = "food-th";
+          }}
+        }}
+      }});
+
+      document.getElementById("foodStatsBadge").textContent = `顯示 ${{filtered.length}} / ${{FOOD_DATA.length}} 家餐廳 (可點擊欄位排序)`;
 
       // Food Table
       const tbody = document.getElementById("foodTableBody");
@@ -652,4 +811,4 @@ html_content = f"""<!DOCTYPE html>
 with open('index.html', 'w', encoding='utf-8') as f:
     f.write(html_content)
 
-print("Portal index.html with Hotel & Food tabs built successfully!")
+print("Portal index.html with interactive sorting & frozen headers created successfully!")
