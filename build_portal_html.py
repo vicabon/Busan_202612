@@ -1,4 +1,4 @@
-import json
+import json, urllib.parse
 
 with open('excel_data.json', 'r', encoding='utf-8') as f:
     hotel_data_str = f.read()
@@ -9,11 +9,17 @@ with open('visitbusan_100_places.json', 'r', encoding='utf-8') as f:
 with open('visitbusan_100_places_kr.json', 'r', encoding='utf-8') as f:
     kr_places = json.load(f)
 
-# Combine food data
+def make_google_map_url(name_kr, addr_kr):
+    clean_addr = addr_kr.split('(')[0].strip() if '(' in addr_kr else addr_kr
+    query = f"{name_kr} {clean_addr}"
+    return f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(query)}"
+
+# Combine food data with Google Maps URLs
 food_data = []
 for i in range(len(en_places)):
     e = en_places[i]
     k = kr_places[i]
+    gmap_link = make_google_map_url(k['title_kr'], k['address_kr'])
     food_data.append({
         'no': i + 1,
         'title_en': e['title'],
@@ -25,7 +31,8 @@ for i in range(len(en_places)):
         'address_kr': k['address_kr'],
         'time': e['operating_time'],
         'tag': e['tag'],
-        'link': e['detail_link']
+        'link': e['detail_link'],
+        'gmap_link': gmap_link
     })
 
 food_json_str = json.dumps(food_data, ensure_ascii=False)
@@ -324,7 +331,28 @@ html_content = f"""<!DOCTYPE html>
     .card-label {{ color: var(--text-muted); font-weight: 500; min-width: 90px; }}
     .card-val {{ font-weight: 600; text-align: right; word-break: break-word; }}
 
-    /* Badges */
+    /* Badges & Links */
+    .gmap-btn {{
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }}
+    .gmap-btn:hover {{
+      background: #22c55e;
+      color: white;
+      border-color: #22c55e;
+      box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+    }}
+
     .ribbon-pill {{
       display: inline-flex;
       align-items: center;
@@ -454,7 +482,8 @@ html_content = f"""<!DOCTYPE html>
               <th class="food-th" onclick="sortFood('title_en')">店名 (英文 / 韓文) <span class="sort-icon" id="food_sort_title_en">⇅</span></th>
               <th class="food-th" onclick="sortFood('ribbon_count')">Blue Ribbon 評級 <span class="sort-icon" id="food_sort_ribbon_count">⇅</span></th>
               <th class="food-th" onclick="sortFood('cuisine_en')">料理種類 <span class="sort-icon" id="food_sort_cuisine_en">⇅</span></th>
-              <th class="food-th">地址 (可複製導航)</th>
+              <th class="food-th">地址 (可複製韓文導航)</th>
+              <th class="food-th" style="text-align: center;">Google Map 導航</th>
               <th class="food-th">營業時間與主題</th>
             </tr>
           </thead>
@@ -477,7 +506,7 @@ html_content = f"""<!DOCTYPE html>
 
     // Sorting states
     let hotelSortCol = null;
-    let hotelSortDir = "asc"; // 'asc' or 'desc'
+    let hotelSortDir = "asc";
 
     let foodSortCol = null;
     let foodSortDir = "asc";
@@ -523,7 +552,7 @@ html_content = f"""<!DOCTYPE html>
         btn.innerHTML = `${{t.icon}} ${{t.label}}`;
         btn.onclick = () => {{
           currentHotelSheet = t.name;
-          hotelSortCol = null; // reset sort when switching sheet
+          hotelSortCol = null;
           initHotelSubtabs();
           document.getElementById("hotelSearchInput").value = "";
           renderHotelSheet();
@@ -532,13 +561,11 @@ html_content = f"""<!DOCTYPE html>
       }});
     }}
 
-    // Sorting Helper for Hotels
     function sortHotel(headerName) {{
       if (hotelSortCol === headerName) {{
         hotelSortDir = hotelSortDir === "asc" ? "desc" : "asc";
       }} else {{
         hotelSortCol = headerName;
-        // Default descending for ratings and reviews, ascending for name
         if (headerName.includes("評比") || headerName.includes("星級") || headerName.includes("價格")) {{
           hotelSortDir = "desc";
         }} else {{
@@ -552,25 +579,21 @@ html_content = f"""<!DOCTYPE html>
       if (!valStr || valStr === "N/A" || valStr === "-") return -999999;
       const str = String(valStr).trim();
       
-      // Star rating: '4星級' -> 4
       if (headerName.includes("星級")) {{
         const m = str.match(/(\\d+)/);
         return m ? parseFloat(m[1]) : 0;
       }}
       
-      // Weighted average / Rating: '9.16 / 10' -> 9.16
       if (headerName.includes("評比") || headerName.includes("Rating") || headerName.includes("Score")) {{
         const m = str.match(/(\\d+(?:\\.\\d+)?)/);
         return m ? parseFloat(m[1]) : 0;
       }}
 
-      // Price: 'NT$ 4,718' -> 4718
       if (headerName.includes("價格") || headerName.includes("Price")) {{
         const clean = str.replace(/[^0-9]/g, '');
         return clean ? parseFloat(clean) : 0;
       }}
 
-      // Fallback
       return str;
     }}
 
@@ -584,7 +607,6 @@ html_content = f"""<!DOCTYPE html>
         return Object.values(row).some(v => String(v).toLowerCase().includes(q));
       }});
 
-      // Apply Sorting
       if (hotelSortCol) {{
         filtered.sort((a, b) => {{
           const valA = extractNumericValue(a[hotelSortCol], hotelSortCol);
@@ -605,7 +627,6 @@ html_content = f"""<!DOCTYPE html>
       const thead = document.getElementById("hotelTableHead");
       const tbody = document.getElementById("hotelTableBody");
       
-      // Build Headers with Click-to-Sort & Indicator
       thead.innerHTML = "<tr>" + sheet.headers.map(h => {{
         const isSorted = hotelSortCol === h;
         const icon = isSorted ? (hotelSortDir === "asc" ? "▲" : "▼") : "⇅";
@@ -699,7 +720,6 @@ html_content = f"""<!DOCTYPE html>
         );
       }});
 
-      // Apply Food Sorting
       if (foodSortCol) {{
         filtered.sort((a, b) => {{
           const vA = a[foodSortCol];
@@ -714,7 +734,6 @@ html_content = f"""<!DOCTYPE html>
         }});
       }}
 
-      // Update sort icons for Food
       ["no", "title_en", "ribbon_count", "cuisine_en"].forEach(col => {{
         const iconEl = document.getElementById(`food_sort_${{col}}`);
         if (iconEl) {{
@@ -754,6 +773,11 @@ html_content = f"""<!DOCTYPE html>
               <div style="font-size: 0.85rem;">${{item.address_en}}</div>
               <div style="margin-top: 2px;"><span class="addr-copy">${{item.address_kr}}</span></div>
             </td>
+            <td style="text-align: center;">
+              <a href="${{item.gmap_link}}" target="_blank" rel="noopener noreferrer" class="gmap-btn">
+                📍 開啟地圖
+              </a>
+            </td>
             <td>
               <div style="font-size: 0.82rem; color: #334155;">${{item.time || '-'}}</div>
               ${{item.tag ? `<div class="tag-badge"># ${{item.tag}}</div>` : ''}}
@@ -788,6 +812,14 @@ html_content = f"""<!DOCTYPE html>
               <span class="card-val"><span class="addr-copy">${{item.address_kr}}</span></span>
             </div>
             <div class="card-row">
+              <span class="card-label">地圖導航</span>
+              <span class="card-val">
+                <a href="${{item.gmap_link}}" target="_blank" rel="noopener noreferrer" class="gmap-btn">
+                  📍 Google Map 導航
+                </a>
+              </span>
+            </div>
+            <div class="card-row">
               <span class="card-label">營業時間</span>
               <span class="card-val" style="font-size: 0.8rem; font-weight: normal;">${{item.time || '-'}}</span>
             </div>
@@ -811,4 +843,4 @@ html_content = f"""<!DOCTYPE html>
 with open('index.html', 'w', encoding='utf-8') as f:
     f.write(html_content)
 
-print("Portal index.html with interactive sorting & frozen headers created successfully!")
+print("Portal index.html updated with Google Maps links!")
