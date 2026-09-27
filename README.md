@@ -71,3 +71,11 @@
    - **價格**：5晚總額約 NT$ 23,183 (每晚約 NT$ 4,636)
    - **特色**：廣安里大橋夜景海景第一排、樓下即是沙灘與咖啡街。
 # Busan_202612
+
+---
+
+## 🍽️ 釜山美食指南專區 (Visit Busan 100選)
+
+已整合釜山官方旅遊局（Visit Busan）評選之 **100 Great Places to Eat in Busan** 完整名單：
+- 完整詳細清單請參見：[BUSAN_100_GREAT_PLACES_TO_EAT.md](BUSAN_100_GREAT_PLACES_TO_EAT.md)
+- 包含標記：**獲得幾個 Blue Ribbon Survey (藍絲帶美食調查評級)**、**店名 (中英韓對照)**、**韓文/英文地址 (可直接複製至 Naver/Kakao Map)**、**飲食種類與營業時間**。
